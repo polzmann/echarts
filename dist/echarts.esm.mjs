@@ -16249,13 +16249,15 @@ time, template, isUTC, lang) {
   var m = date[minutesGetterName(isUTC)]();
   var s = date[secondsGetterName(isUTC)]();
   var S = date[millisecondsGetterName(isUTC)]();
+  var a = H >= 12 ? 'pm' : 'am';
+  var A = a.toUpperCase();
   var localeModel = lang instanceof Model ? lang : getLocaleModel(lang || SYSTEM_LANG) || getDefaultLocaleModel();
   var timeModel = localeModel.getModel('time');
   var month = timeModel.get('month');
   var monthAbbr = timeModel.get('monthAbbr');
   var dayOfWeek = timeModel.get('dayOfWeek');
   var dayOfWeekAbbr = timeModel.get('dayOfWeekAbbr');
-  return (template || '').replace(/{yyyy}/g, y + '').replace(/{yy}/g, pad(y % 100 + '', 2)).replace(/{Q}/g, q + '').replace(/{MMMM}/g, month[M - 1]).replace(/{MMM}/g, monthAbbr[M - 1]).replace(/{MM}/g, pad(M, 2)).replace(/{M}/g, M + '').replace(/{dd}/g, pad(d, 2)).replace(/{d}/g, d + '').replace(/{eeee}/g, dayOfWeek[e]).replace(/{ee}/g, dayOfWeekAbbr[e]).replace(/{e}/g, e + '').replace(/{HH}/g, pad(H, 2)).replace(/{H}/g, H + '').replace(/{hh}/g, pad(h + '', 2)).replace(/{h}/g, h + '').replace(/{mm}/g, pad(m, 2)).replace(/{m}/g, m + '').replace(/{ss}/g, pad(s, 2)).replace(/{s}/g, s + '').replace(/{SSS}/g, pad(S, 3)).replace(/{S}/g, S + '');
+  return (template || '').replace(/{a}/g, a + '').replace(/{A}/g, A + '').replace(/{yyyy}/g, y + '').replace(/{yy}/g, pad(y % 100 + '', 2)).replace(/{Q}/g, q + '').replace(/{MMMM}/g, month[M - 1]).replace(/{MMM}/g, monthAbbr[M - 1]).replace(/{MM}/g, pad(M, 2)).replace(/{M}/g, M + '').replace(/{dd}/g, pad(d, 2)).replace(/{d}/g, d + '').replace(/{eeee}/g, dayOfWeek[e]).replace(/{ee}/g, dayOfWeekAbbr[e]).replace(/{e}/g, e + '').replace(/{HH}/g, pad(H, 2)).replace(/{H}/g, H + '').replace(/{hh}/g, pad(h + '', 2)).replace(/{h}/g, h + '').replace(/{mm}/g, pad(m, 2)).replace(/{m}/g, m + '').replace(/{ss}/g, pad(s, 2)).replace(/{s}/g, s + '').replace(/{SSS}/g, pad(S, 3)).replace(/{S}/g, S + '');
 }
 function leveledFormat(tick, idx, formatter, lang, isUTC) {
   var template = null;
@@ -17629,8 +17631,8 @@ function doGuessOrdinal(data, sourceFormat, seriesLayoutBy, dimensionsDefine, st
   function detectValue(val) {
     var beStr = isString(val);
     // Consider usage convenience, '1', '2' will be treated as "number".
-    // `isFinit('')` get `true`.
-    if (val != null && isFinite(val) && val !== '') {
+    // `Number('')` (or any whitespace) is `0`.
+    if (val != null && Number.isFinite(Number(val)) && val !== '') {
       return beStr ? BE_ORDINAL.Might : BE_ORDINAL.Not;
     } else if (beStr && val !== '-') {
       return BE_ORDINAL.Must;
@@ -20389,7 +20391,7 @@ opt) {
   return value == null || value === '' ? NaN
   // If string (like '-'), using '+' parse to NaN
   // If object, also parse to NaN
-  : +value;
+  : Number(value);
 }
 var valueParserMap = createHashMap({
   'number': function (val) {
@@ -41354,6 +41356,10 @@ function pieLayout(seriesType, ecModel, api) {
     var halfPadAngle = dir * padAngle / 2;
     normalizeArcAngles(angles, !clockwise);
     startAngle = angles[0], endAngle = angles[1];
+    var layoutData = getSeriesLayoutData(seriesModel);
+    layoutData.startAngle = startAngle;
+    layoutData.endAngle = endAngle;
+    layoutData.clockwise = clockwise;
     var angleRange = Math.abs(endAngle - startAngle);
     // In the case some sector angle is smaller than minAngle
     var restAngle = angleRange;
@@ -41462,6 +41468,7 @@ function pieLayout(seriesType, ecModel, api) {
     }
   });
 }
+var getSeriesLayoutData = makeInner();
 
 /*
 * Licensed to the Apache Software Foundation (ASF) under one
@@ -42142,8 +42149,9 @@ var PieView = /** @class */function (_super) {
     }
     // when all data are filtered, show lightgray empty circle
     if (data.count() === 0 && seriesModel.get('showEmptyCircle')) {
+      var layoutData = getSeriesLayoutData(seriesModel);
       var sector = new Sector({
-        shape: getBasicPieLayout(seriesModel, api)
+        shape: extend(getBasicPieLayout(seriesModel, api), layoutData)
       });
       sector.useStyle(seriesModel.getModel('emptyCircleStyle').getItemStyle());
       this._emptyCircleSector = sector;
@@ -47898,6 +47906,7 @@ var MapDraw = /** @class */function () {
       this._mouseDownFlag = false;
       updateViewOnZoom(controllerHost, e.scale, e.originX, e.originY);
       api.dispatchAction(extend(makeActionBase(), {
+        totalZoom: controllerHost.zoom,
         zoom: e.scale,
         originX: e.originX,
         originY: e.originY,
@@ -72431,7 +72440,6 @@ function isUserFeatureName(featureName) {
   return featureName.indexOf('my') === 0;
 }
 
-/* global window, document */
 var SaveAsImage = /** @class */function (_super) {
   __extends(SaveAsImage, _super);
   function SaveAsImage() {
@@ -72451,7 +72459,7 @@ var SaveAsImage = /** @class */function (_super) {
     });
     var browser = env.browser;
     // Chrome, Firefox, New Edge
-    if (isFunction(MouseEvent) && (browser.newEdge || !browser.ie && !browser.edge)) {
+    if (typeof MouseEvent === 'function' && (browser.newEdge || !browser.ie && !browser.edge)) {
       var $a = document.createElement('a');
       $a.download = title + '.' + type;
       $a.target = '_blank';

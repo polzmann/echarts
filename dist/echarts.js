@@ -16255,7 +16255,7 @@
       var m = date[minutesGetterName(isUTC)]();
       var s = date[secondsGetterName(isUTC)]();
       var S = date[millisecondsGetterName(isUTC)]();
-      var a = H >= 12 ? "pm" : "am";
+      var a = H >= 12 ? 'pm' : 'am';
       var A = a.toUpperCase();
       var localeModel = lang instanceof Model ? lang : getLocaleModel(lang || SYSTEM_LANG) || getDefaultLocaleModel();
       var timeModel = localeModel.getModel('time');
